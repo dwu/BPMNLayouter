@@ -41,6 +41,7 @@ import org.jdom2.Element;
 import org.jdom2.JDOMException;
 import org.jdom2.filter.ElementFilter;
 import org.jdom2.input.DOMBuilder;
+import org.jdom2.input.SAXBuilder;
 import org.jdom2.output.Format;
 import org.jdom2.output.XMLOutputter;
 import org.w3c.dom.Node;
@@ -48,12 +49,12 @@ import org.xml.sax.SAXException;
 
 public class Util {
 
-	static boolean firstSortDone = false;
-	static List<FlowNode> L;
-	static List<SequenceFlow> B;
-	static BpmnModel model;
-	
-	/*
+    static boolean firstSortDone = false;
+    static List<FlowNode> L;
+    static List<SequenceFlow> B;
+    static BpmnModel model;
+
+    /*
 	public static HashMap<String, Element> removeAndGetExtensions(String filename) throws Exception
 	{
 		HashMap<String, Element> extensionsMap = new HashMap<>();
@@ -78,247 +79,247 @@ public class Util {
         
 		return extensionsMap;
 	}
-	*/
+     */
+    private static void safeXMLFile(String filename, Document document) throws IOException {
+        XMLOutputter xmlOutput = new XMLOutputter();
 
-	private static void safeXMLFile(String filename, Document document) throws IOException {
-		XMLOutputter xmlOutput = new XMLOutputter();
+        xmlOutput.setFormat(Format.getPrettyFormat());
+        xmlOutput.output(document, new FileWriter(filename));
+    }
 
-     	xmlOutput.setFormat(Format.getPrettyFormat());
-     	xmlOutput.output(document, new FileWriter(filename));
-	}
+    public static List<FlowNode> topologicalSortNodes(Collection<FlowNode> flowNodes, BpmnModel model) {
 
-	public static List<FlowNode> topologicalSortNodes(Collection<FlowNode> flowNodes, BpmnModel model) {
+        Util.model = model;
+        L = new ArrayList<FlowNode>();
+        B = new ArrayList<SequenceFlow>();
 
-		Util.model = model;
-		L = new ArrayList<FlowNode>();
-		B = new ArrayList<SequenceFlow>();
+        Collection<FlowNode> flowNodeList = new ArrayList<>();
+        flowNodeList.addAll(flowNodes);
 
-		Collection<FlowNode> flowNodeList = new ArrayList<>();
-		flowNodeList.addAll(flowNodes);
+        List<FlowNode> S = new ArrayList<>();
 
-		List<FlowNode> S = new ArrayList<>();
+        // algorithm from kitzmann09
+        while (!flowNodeList.isEmpty()) {
+            S.clear();
+            for (FlowNode element : flowNodeList) {
+                if (element.getIncomingFlows().size() == 0
+                        || allIncomingElementsAlreadyAdded(element.getIncomingFlows(), L)) {
+                    S.add(element);
+                }
+            }
+            if (!S.isEmpty()) {
+                while (!S.isEmpty()) {
+                    // ordinary top-sort
+                    FlowNode n = S.get(0);
+                    flowNodeList.remove(S.remove(0));
+                    L.add(n);
 
-		// algorithm from kitzmann09
-		while (!flowNodeList.isEmpty()) {
-			S.clear();
-			for (FlowNode element : flowNodeList) {
-				if (element.getIncomingFlows().size() == 0
-						|| allIncomingElementsAlreadyAdded(element.getIncomingFlows(), L))
-					S.add(element);
-			}
-			if (!S.isEmpty()) {
-				while (!S.isEmpty()) {
-					// ordinary top-sort
-					FlowNode n = S.get(0);
-					flowNodeList.remove(S.remove(0));
-					L.add(n);
+                    if (n instanceof Activity) {
+                        Activity activity = (Activity) n;
+                        List<BoundaryEvent> boundaryEvents = activity.getBoundaryEvents();
+                        L.addAll(boundaryEvents);
 
-					if (n instanceof Activity) {
-						Activity activity = (Activity) n;
-						List<BoundaryEvent> boundaryEvents = activity.getBoundaryEvents();
-						L.addAll(boundaryEvents);
+                        for (BoundaryEvent boundaryEvent : boundaryEvents) {
+                            String boundaryEventChildRef = getBoundaryEventChildRef(boundaryEvent, model);
+                            FlowNode boundaryEventChildNode = (FlowNode) model.getFlowElement(boundaryEventChildRef);
+                            L.add(boundaryEventChildNode);
+                            flowNodeList.remove(boundaryEventChildNode);
+                        }
+                    }
+                }
+            } else {
+                FlowNode J = null;
+                // cycle found
+                for (FlowNode element : flowNodeList) {
+                    // find loop entry
+                    if (anyIncomingElementAlreadyAdded(element.getIncomingFlows(), L)) {
+                        J = element;
+                        break;
+                    }
+                }
 
-						for (BoundaryEvent boundaryEvent : boundaryEvents) {
-							String boundaryEventChildRef = getBoundaryEventChildRef(boundaryEvent, model);
-							FlowNode boundaryEventChildNode = (FlowNode) model.getFlowElement(boundaryEventChildRef);
-							L.add(boundaryEventChildNode);
-							flowNodeList.remove(boundaryEventChildNode);
-						}
-					}
-				}
-			} else {
-				FlowNode J = null;
-				// cycle found
-				for (FlowNode element : flowNodeList) {
-					// find loop entry
-					if (anyIncomingElementAlreadyAdded(element.getIncomingFlows(), L)) {
-						J = element;
-						break;
-					}
-				}
+                assert J != null;
 
-				assert J != null;
+                // process loop entry
+                for (SequenceFlow incomingFlow : J.getIncomingFlows()) {
 
-				// process loop entry
-				for (SequenceFlow incomingFlow : J.getIncomingFlows()) {
+                    if (!L.contains((FlowNode) model.getFlowElement(incomingFlow.getSourceRef()))) {
+                        B.add(incomingFlow);
+                    }
+                }
 
-					if (!L.contains((FlowNode) model.getFlowElement(incomingFlow.getSourceRef())))
-						B.add(incomingFlow);
-				}
+                for (SequenceFlow s : B) {
+                    swapSourceAndTarget(s);
+                }
+            }
 
-				for (SequenceFlow s : B) {
-					swapSourceAndTarget(s);
-				}
-			}
+        }
 
-		}
+        for (SequenceFlow s : B) {
+            swapSourceAndTarget(s);
+        }
 
-		for (SequenceFlow s : B) {
-			swapSourceAndTarget(s);
-		}
+        return L;
+    }
 
-		return L;
-	}
+    private static String getBoundaryEventChildRef(BoundaryEvent boundaryEvent, BpmnModel model) {
 
+        if (boundaryEvent.getOutgoingFlows().size() == 1) {
+            return boundaryEvent.getOutgoingFlows().get(0).getTargetRef();
+        }
 
-	private static String getBoundaryEventChildRef(BoundaryEvent boundaryEvent, BpmnModel model) {
+        return getAssociationTargetRef(boundaryEvent, model);
+    }
 
-		if (boundaryEvent.getOutgoingFlows().size() == 1)
-			return boundaryEvent.getOutgoingFlows().get(0).getTargetRef();
+    private static String getAssociationTargetRef(BoundaryEvent boundaryEvent, BpmnModel model) {
+        String targetRef = searchTargetRefInProcesses(boundaryEvent, model);
 
-		return getAssociationTargetRef(boundaryEvent, model);
-	}
+        if (targetRef == null) {
+            targetRef = searchTargetRefInSubProcesses(boundaryEvent, model);
+        }
 
-	private static String getAssociationTargetRef(BoundaryEvent boundaryEvent, BpmnModel model) {
-		String targetRef = searchTargetRefInProcesses(boundaryEvent, model);
+        return targetRef;
+    }
 
-		if (targetRef == null)
-			targetRef = searchTargetRefInSubProcesses(boundaryEvent, model);
+    private static String searchTargetRefInSubProcesses(BoundaryEvent boundaryEvent, BpmnModel model2) {
+        for (Process process : model.getProcesses()) {
+            for (SubProcess subprocess : process.findFlowElementsOfType(SubProcess.class)) {
+                for (Artifact artifact : subprocess.getArtifacts()) {
+                    if (artifact instanceof Association) {
+                        Association association = (Association) artifact;
+                        if (association.getSourceRef() == boundaryEvent.getId()) {
+                            return association.getTargetRef();
+                        }
+                    }
+                }
+            }
+        }
+        return null;
+    }
 
-		return targetRef;
-	}
+    private static String searchTargetRefInProcesses(BoundaryEvent boundaryEvent, BpmnModel model) {
+        for (Process process : model.getProcesses()) {
+            for (Artifact artifact : process.getArtifacts()) {
+                if (artifact instanceof Association) {
+                    Association association = (Association) artifact;
+                    if (association.getSourceRef().equals(boundaryEvent.getId())) {
+                        return association.getTargetRef();
+                    }
+                }
+            }
 
-	private static String searchTargetRefInSubProcesses(BoundaryEvent boundaryEvent, BpmnModel model2) {
-		for (Process process : model.getProcesses()) {
-			for (SubProcess subprocess : process.findFlowElementsOfType(SubProcess.class)) {
-				for (Artifact artifact : subprocess.getArtifacts()) {
-					if (artifact instanceof Association) {
-						Association association = (Association) artifact;
-						if (association.getSourceRef() == boundaryEvent.getId())
-							return association.getTargetRef();
-					}
-				}
-			}
-		}
-		return null;
-	}
+        }
+        return null;
+    }
 
-	private static String searchTargetRefInProcesses(BoundaryEvent boundaryEvent, BpmnModel model) {
-		for (Process process : model.getProcesses()) {
-			for (Artifact artifact : process.getArtifacts()) {
-				if (artifact instanceof Association) {
-					Association association = (Association) artifact;
-					if (association.getSourceRef().equals(boundaryEvent.getId()))
-						return association.getTargetRef();
-				}
-			}
+    private static boolean anyIncomingElementAlreadyAdded(Collection<SequenceFlow> incomingFlows, List<FlowNode> L) {
+        for (SequenceFlow incomingFlow : incomingFlows) {
+            if (L.contains((FlowNode) model.getFlowElement(incomingFlow.getSourceRef()))) {
+                return true;
+            }
+        }
+        return false;
+    }
 
-		}
-		return null;
-	}
+    private static boolean allIncomingElementsAlreadyAdded(Collection<SequenceFlow> incomingFlows, List<FlowNode> L) {
 
-	private static boolean anyIncomingElementAlreadyAdded(Collection<SequenceFlow> incomingFlows, List<FlowNode> L) {
-		for (SequenceFlow incomingFlow : incomingFlows) {
-			if (L.contains((FlowNode) model.getFlowElement(incomingFlow.getSourceRef())))
-				return true;
-		}
-		return false;
-	}
+        for (SequenceFlow incomingFlow : incomingFlows) {
+            if (!L.contains((FlowNode) model.getFlowElement(incomingFlow.getSourceRef()))) {
+                return false;
+            }
+        }
+        return true;
+    }
 
-	private static boolean allIncomingElementsAlreadyAdded(Collection<SequenceFlow> incomingFlows, List<FlowNode> L) {
+    private static void swapSourceAndTarget(SequenceFlow s) {
 
-		for (SequenceFlow incomingFlow : incomingFlows) {
-			if (!L.contains((FlowNode) model.getFlowElement(incomingFlow.getSourceRef())))
-				return false;
-		}
-		return true;
-	}
+        FlowNode source = (FlowNode) model.getFlowElement(s.getSourceRef());
+        FlowNode target = (FlowNode) model.getFlowElement(s.getTargetRef());
 
-	private static void swapSourceAndTarget(SequenceFlow s) {
+        source.getOutgoingFlows().remove(s); // Remove outoing from loop node
+        source.getIncomingFlows().add(s); // Add incoming from loop node
+        target.getIncomingFlows().remove(s); // Remove Incoming to chosen start node
+        target.getOutgoingFlows().add(s); // Add Outgoing to chosen start node
 
-		FlowNode source = (FlowNode) model.getFlowElement(s.getSourceRef());
-		FlowNode target = (FlowNode) model.getFlowElement(s.getTargetRef());
+        s.setSourceRef(target.getId());
+        s.setTargetRef(source.getId());
+    }
 
-		source.getOutgoingFlows().remove(s); // Remove outoing from loop node
-		source.getIncomingFlows().add(s); // Add incoming from loop node
-		target.getIncomingFlows().remove(s); // Remove Incoming to chosen start node
-		target.getOutgoingFlows().add(s); // Add Outgoing to chosen start node
+    public static void writeModel(BpmnModel model, String name) throws IOException, FileNotFoundException {
+        byte[] xml = new BpmnXMLConverter().convertToXML(model);
+        try ( FileOutputStream out = new FileOutputStream(name)) {
+            out.write(xml);
+        }
+    }
 
-		s.setSourceRef(target.getId());
-		s.setTargetRef(source.getId());
-	}
+    public static BpmnModel readBPMFile(File file)
+            throws XMLStreamException, FactoryConfigurationError, FileNotFoundException {
+        XMLStreamReader reader = XMLInputFactory.newInstance().createXMLStreamReader(new FileInputStream(file));
+        BpmnModel model = new BpmnXMLConverter().convertToBpmnModel(reader);
+        return model;
+    }
 
-	public static void writeModel(BpmnModel model, String name) throws IOException, FileNotFoundException {
-		byte[] xml = new BpmnXMLConverter().convertToXML(model);
-		try (FileOutputStream out = new FileOutputStream(name)) {
-			out.write(xml);
-			}
-	}
+    private static List<BoundaryEvent> getBoundaryEvents(FlowNode node) {
+        if (node instanceof Activity) {
+            Activity activity = (Activity) node;
+            return activity.getBoundaryEvents();
+        }
+        return null;
+    }
 
-	public static BpmnModel readBPMFile(File file)
-			throws XMLStreamException, FactoryConfigurationError, FileNotFoundException {
-		XMLStreamReader reader = XMLInputFactory.newInstance().createXMLStreamReader(new FileInputStream(file));
-		BpmnModel model = new BpmnXMLConverter().convertToBpmnModel(reader);
-		return model;
-	}
+    public static void addXMLElementsBackToFile(HashMap<String, Element> extensionMap, String filename) throws IOException, ParserConfigurationException, SAXException, JDOMException {
 
-	private static List<BoundaryEvent> getBoundaryEvents(FlowNode node) {
-		if (node instanceof Activity) {
-			Activity activity = (Activity) node;
-			return activity.getBoundaryEvents();
-		}
-		return null;
-	}
+        Document document = parseXMLFile(filename);
+        Element rootElement = document.getRootElement();
 
-	public static void addXMLElementsBackToFile(HashMap<String, Element> extensionMap, String filename) throws IOException, ParserConfigurationException, SAXException {
-		
-		Document document = parseXMLFile(filename);
-        Element rootElement = document.getRootElement();              
-        
         Iterator<Element> elementIterator = rootElement.getDescendants(new ElementFilter());
-        
+
         ArrayList<Element> parents = new ArrayList<>();
-        
-        while(elementIterator.hasNext())
-        {
-        	Element currentElement = elementIterator.next();
-        	String id = currentElement.getAttributeValue("id");
-        	
-        	if(id != null && extensionMap.containsKey(id))
-        	{
-        		parents.add(currentElement);
-        	}
+
+        while (elementIterator.hasNext()) {
+            Element currentElement = elementIterator.next();
+            String id = currentElement.getAttributeValue("id");
+
+            if (id != null && extensionMap.containsKey(id)) {
+                parents.add(currentElement);
+            }
         }
-        
-        for(Element parent : parents)
-        {
-        	String id = parent.getAttributeValue("id");
-        	parent.addContent(extensionMap.get(id));
+
+        for (Element parent : parents) {
+            String id = parent.getAttributeValue("id");
+            parent.addContent(extensionMap.get(id));
         }
-        
+
         safeXMLFile(filename, document);
-	}
+    }
 
-	private static Document parseXMLFile(String filename)
-			throws ParserConfigurationException, SAXException, IOException {
-		DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-        DocumentBuilder documentBuilder = factory.newDocumentBuilder();
-        org.w3c.dom.Document w3cDocument = documentBuilder.parse(filename);
-        Document document = new DOMBuilder().build(w3cDocument);
-		return document;
-	}
+    private static Document parseXMLFile(String filename) throws JDOMException, IOException {
+        SAXBuilder builder = new SAXBuilder();
+        File xmlFile = new File(filename);
+        return builder.build(xmlFile);
+    }
 
-	public static HashMap<String, Element> removeAndGetElementsFromXML(String filePath, String elementName) throws ParserConfigurationException, SAXException, IOException {
-		HashMap<String, Element> elementMap = new HashMap<>();
+    public static HashMap<String, Element> removeAndGetElementsFromXML(String filePath, String elementName) throws JDOMException, IOException, IOException {
+        HashMap<String, Element> elementMap = new HashMap<>();
 
-		Document document = parseXMLFile(filePath);
-        Element rootElement = document.getRootElement();              
-        
+        Document document = parseXMLFile(filePath);
+        Element rootElement = document.getRootElement();
+
         Iterator<Element> elementIterator = rootElement.getDescendants(new ElementFilter(elementName));
-        
-        while(elementIterator.hasNext())
-        {
-        	Element currentElement = elementIterator.next();
-        	Element sedParent = (Element) currentElement.getParent();
-        	String id = sedParent.getAttributeValue("id");        	
-        	elementMap.put(id, currentElement);
-        }
-        
-        for(Element element : elementMap.values())
-        	element.detach();
 
-     	safeXMLFile(filePath, document);
-        
-		return elementMap;
-	}
+        while (elementIterator.hasNext()) {
+            Element currentElement = elementIterator.next();
+            Element sedParent = (Element) currentElement.getParent();
+            String id = sedParent.getAttributeValue("id");
+            elementMap.put(id, currentElement);
+        }
+
+        for (Element element : elementMap.values()) {
+            element.detach();
+        }
+
+        safeXMLFile(filePath, document);
+
+        return elementMap;
+    }
 }
