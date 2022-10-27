@@ -20,11 +20,12 @@ import org.activiti.bpmn.model.SequenceFlow;
 import org.activiti.bpmn.model.SubProcess;
 
 public class BPMNUtils {
-	
+
 	private static List<SequenceFlow> containerSpanningFlows;
 	private static HashMap<FlowNode, SequenceFlow> markedFlows;
-	
-	public static List<SequenceFlow> findAndTemporarilyRemoveFlowsBetweenPartitions(List<Process> processes, BpmnModel model) {
+
+	public static List<SequenceFlow> findAndTemporarilyRemoveFlowsBetweenPartitions(List<Process> processes,
+			BpmnModel model) {
 		containerSpanningFlows = new ArrayList<>();
 		markedFlows = new HashMap<>();
 
@@ -39,7 +40,7 @@ public class BPMNUtils {
 		}
 		return containerSpanningFlows;
 	}
-	
+
 	private static void addPartitionFlowNodesToSeparateContainer(List<Process> processes,
 			List<List<FlowNode>> flowNodeContainers, BpmnModel model) {
 		for (Process process : processes) {
@@ -53,7 +54,7 @@ public class BPMNUtils {
 			}
 		}
 	}
-	
+
 	private static void addFlowNodesToNewFlowNodeContainer(List<List<FlowNode>> flowNodeContainers,
 			Collection<FlowElement> flowElements) {
 		ArrayList<FlowNode> flowNodes = new ArrayList<>();
@@ -63,7 +64,7 @@ public class BPMNUtils {
 				flowNodes.add((FlowNode) element);
 		}
 	}
-	
+
 	private static void markAndSaveInterleavingEdges(List<FlowNode> container, FlowNode node, BpmnModel model) {
 		for (SequenceFlow sequenceFlow : node.getOutgoingFlows()) {
 			FlowNode target = (FlowNode) model.getFlowElement(sequenceFlow.getTargetRef());
@@ -73,12 +74,11 @@ public class BPMNUtils {
 			}
 		}
 	}
-	
+
 	private static void markEdgesForRemoval(FlowNode node, SequenceFlow sequenceFlow, BpmnModel model) {
 		markedFlows.put(node, sequenceFlow);
 	}
-	
-	
+
 	private static void removeAllMarkedEdges(BpmnModel model) {
 		for (FlowNode node : markedFlows.keySet()) {
 			node.getOutgoingFlows().remove(markedFlows.get(node));
@@ -111,7 +111,7 @@ public class BPMNUtils {
 	public static List<FlowElement> gatherLaneFlowElements(Lane lane, BpmnModel model) {
 		List<String> laneFlowRefs = lane.getFlowReferences();
 		List<FlowElement> laneFlowElements = new ArrayList<>();
-	
+
 		for (String ref : laneFlowRefs) {
 			laneFlowElements.add(model.getFlowElement(ref));
 		}
@@ -135,23 +135,21 @@ public class BPMNUtils {
 		}
 		return null;
 	}
-	
 
 	public static List<FlowNode> findAllSubsequentFlowNodesInGroup(FlowNode startingFlowNode, BpmnModel model) {
 		List<FlowNode> collectedFlowNodes = new ArrayList<>();
 		collectedFlowNodes.add(startingFlowNode);
-		
+
 		try {
 			findFlowNodesRecursive(startingFlowNode, collectedFlowNodes, model);
-		}catch(NullPointerException e)
-		{
+		} catch (NullPointerException e) {
 			e.printStackTrace();
 			return new ArrayList<>();
 		}
 
 		return collectedFlowNodes;
 	}
-	
+
 	public static FlowNode getSubsequentNode(FlowNode node, BpmnModel model) {
 		String targetRef;
 		if (node.getOutgoingFlows().size() == 0) {
@@ -165,8 +163,9 @@ public class BPMNUtils {
 		FlowNode firstTargetNode = (FlowNode) model.getFlowElement(targetRef);
 		return firstTargetNode;
 	}
-	
-	private static void findFlowNodesRecursive(FlowNode startingFlowNode, List<FlowNode> collectedFlowNodes, BpmnModel model) throws NullPointerException{
+
+	private static void findFlowNodesRecursive(FlowNode startingFlowNode, List<FlowNode> collectedFlowNodes,
+			BpmnModel model) throws NullPointerException {
 		for (SequenceFlow flow : startingFlowNode.getOutgoingFlows()) {
 			if (flow.getTargetRef() == null)
 				return;
@@ -201,7 +200,7 @@ public class BPMNUtils {
 		}
 		return false;
 	}
-	
+
 	public static boolean activityIsExpanded(String id, BpmnModel model) {
 		GraphicInfo gi = model.getGraphicInfo(id);
 		return (gi.getExpanded() != null && gi.getExpanded());
@@ -209,45 +208,46 @@ public class BPMNUtils {
 
 	public static List<SequenceFlow> replaceAssociationsWithSequenceFlows(BpmnModel model) {
 		List<SequenceFlow> temporarySequenceFlows = new ArrayList<>();
-		
-		for(Process process : model.getProcesses()){
-			for(Artifact artifact : process.getArtifacts()) {
-				if(artifact instanceof Association) {
+
+		for (Process process : model.getProcesses()) {
+			for (Artifact artifact : process.getArtifacts()) {
+				if (artifact instanceof Association) {
 					String sourceRef = ((Association) artifact).getSourceRef();
 					String targetRef = ((Association) artifact).getTargetRef();
-					
+
 					SequenceFlow tempFlow = new SequenceFlow();
 					tempFlow.setSourceRef(sourceRef);
 					tempFlow.setTargetRef(targetRef);
-					
-					if(!(model.getFlowElement(sourceRef) instanceof FlowNode))
+
+					if (!(model.getFlowElement(sourceRef) instanceof FlowNode))
 						continue;
-					
-					FlowNode sourceNode = ((FlowNode)model.getFlowElement(sourceRef));
-					FlowNode targetNode = ((FlowNode)model.getFlowElement(targetRef));
-					
-					if(targetNode == null)
+
+					FlowNode sourceNode = ((FlowNode) model.getFlowElement(sourceRef));
+					FlowNode targetNode = ((FlowNode) model.getFlowElement(targetRef));
+
+					if (targetNode == null)
 						continue;
 
 					sourceNode.getOutgoingFlows().add(tempFlow);
 					targetNode.getIncomingFlows().add(tempFlow);
-					
+
 					temporarySequenceFlows.add(tempFlow);
 				}
 			}
 		}
-		
+
 		return temporarySequenceFlows;
 	}
 
-	public static void removeTemporarySequenceFlowsFromModel(List<SequenceFlow> temporarySequenceFlows, BpmnModel model) {
-		
-		for(SequenceFlow flow : temporarySequenceFlows) {
+	public static void removeTemporarySequenceFlowsFromModel(List<SequenceFlow> temporarySequenceFlows,
+			BpmnModel model) {
+
+		for (SequenceFlow flow : temporarySequenceFlows) {
 			String sourceRef = flow.getSourceRef();
 			String targetRef = flow.getTargetRef();
-			
-			((FlowNode)model.getFlowElement(sourceRef)).getOutgoingFlows().remove(flow);
-			((FlowNode)model.getFlowElement(targetRef)).getIncomingFlows().remove(flow);
+
+			((FlowNode) model.getFlowElement(sourceRef)).getOutgoingFlows().remove(flow);
+			((FlowNode) model.getFlowElement(targetRef)).getIncomingFlows().remove(flow);
 		}
 	}
 

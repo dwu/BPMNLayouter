@@ -10,27 +10,25 @@ import java.util.List;
 import org.activiti.bpmn.model.FlowNode;
 
 public class Grid<T> {
-	
+
 	private List<List<Cell<T>>> columns = new ArrayList<List<Cell<T>>>();
 	private HashMap<T, Cell<T>> cellmap = new HashMap<>();
-	private GridPosition gridPosition = new GridPosition(0,0);
+	private GridPosition gridPosition = new GridPosition(0, 0);
 	private Point absolutePosition = new Point();
 	private Dimension absoluteSize = new Dimension();
 	private int cellHeight, cellWidth;
 	private Cell<T> destCell;
 	private boolean isEmpty = true;
-	
-	public Grid()
-	{
+
+	public Grid() {
 		columns.add(new ArrayList<Cell<T>>());
-		columns.get(0).add(new Cell<T>(0,0));
+		columns.get(0).add(new Cell<T>(0, 0));
 	}
-	
-	public GridSize getGridSize()
-	{
+
+	public GridSize getGridSize() {
 		return new GridSize(columns.get(0).size(), columns.size());
 	}
-	
+
 	public void addRowsBelowAndAbovePosition(GridPosition position, int rowCount) {
 		for (int i = 1; i < rowCount; i++) {
 			if (i % 2 == 0)
@@ -41,16 +39,16 @@ public class Grid<T> {
 			}
 		}
 	}
-	
+
 	public void createAndReserveCells(GridPosition position, Grid<FlowNode> spGrid) {
 		GridPosition subProcessPosition = new GridPosition(position);
 
 		for (List<Cell<FlowNode>> col : spGrid.getColumns()) {
 			for (Iterator<Cell<FlowNode>> iterator = col.iterator(); iterator.hasNext(); iterator.next()) {
-				
-				if(subProcessPosition.row > this.getGridSize().rows()-1)
+
+				if (subProcessPosition.row > this.getGridSize().rows() - 1)
 					this.addLastRow();
-				
+
 				addValue(null, subProcessPosition);
 				getCell(subProcessPosition).flag = CellFlag.RESERVED;
 				subProcessPosition.row++;
@@ -59,8 +57,8 @@ public class Grid<T> {
 			subProcessPosition.column++;
 		}
 	}
-	
-	public void shiftFlowNode(T node, int distance) throws ArrayIndexOutOfBoundsException{
+
+	public void shiftFlowNode(T node, int distance) throws ArrayIndexOutOfBoundsException {
 
 		Cell<T> sourceCell = this.getCellByValue(node);
 
@@ -90,13 +88,12 @@ public class Grid<T> {
 
 		moveCellContent(sourceCell, destCell);
 	}
-	
-	public void appendGrid(Grid<T> g)
-	{
+
+	public void appendGrid(Grid<T> g) {
 		isEmpty = false;
 		int colIndex = 0;
 		int originalRowSize = getGridSize().rows();
-		
+
 		for (List<Cell<T>> column : g.getColumns()) {
 			if (this.columns.size() == colIndex) {
 				this.addColumn(originalRowSize);
@@ -106,58 +103,52 @@ public class Grid<T> {
 			}
 			colIndex++;
 		}
-		
-		//fill up the remaining columns with cells to match row numbers
-		while(colIndex != columns.size())
-		{
-			while(this.getColumns().get(0).size() != this.getColumns().get(colIndex).size())
+
+		// fill up the remaining columns with cells to match row numbers
+		while (colIndex != columns.size()) {
+			while (this.getColumns().get(0).size() != this.getColumns().get(colIndex).size())
 				this.getColumns().get(colIndex).add(new Cell<T>(0, 0));
 			colIndex++;
 		}
-		
+
 		cellmap.putAll(g.cellmap);
 	}
 
-	public T getValueFromCell(int row, int col)
-	{
+	public T getValueFromCell(int row, int col) {
 		return (T) columns.get(col).get(row).getValue();
 	}
-	
-	public Cell<T> addValueToCell(T value, int row, int col)
-	{
+
+	public Cell<T> addValueToCell(T value, int row, int col) {
 		int freeColumn = col;
-		
-		while(freeColumn >= columns.size())
+
+		while (freeColumn >= columns.size())
 			addColumn(getGridSize().rows());
-		
+
 		Cell<T> cell = columns.get(freeColumn).get(row);
-	
-		while(cell.getValue() != null)
-		{
+
+		while (cell.getValue() != null) {
 			addColumn(getGridSize().rows());
 			freeColumn++;
 			cell = columns.get(freeColumn).get(row);
 		}
-		
-		if(value != null)
-		{
+
+		if (value != null) {
 			cell.setValue(value);
 			cellmap.put(value, cell);
 		}
 		return cell;
 	}
-	
-	public Cell<T> getCellByValue(T  value)
-	{
+
+	public Cell<T> getCellByValue(T value) {
 		return cellmap.get(value);
 	}
-	
+
 	public void addColumn(int rows) {
 		ArrayList<Cell<T>> col = new ArrayList<Cell<T>>();
 		fillColumnWithRows(col, rows);
 		columns.add(col);
 	}
-	
+
 	public void addColumn() {
 		ArrayList<Cell<T>> col = new ArrayList<Cell<T>>();
 		fillColumnWithRows(col, getGridSize().rows());
@@ -165,28 +156,25 @@ public class Grid<T> {
 	}
 
 	private void fillColumnWithRows(ArrayList<Cell<T>> col, int rows) {
-		for(int i = 0; i < rows; i++)
-			col.add(new Cell<T>(i, columns.size()));;
+		for (int i = 0; i < rows; i++)
+			col.add(new Cell<T>(i, columns.size()));
+		;
 	}
 
 	public void addRowAbove(int rowIndex) {
-		for(List<Cell<T>> row : columns)
-		{
+		for (List<Cell<T>> row : columns) {
 			row.add(rowIndex, new Cell<T>(rowIndex, row.get(0).gridPosition.column));
-			for(int i = rowIndex+1; i < row.size(); i++)
-			{
+			for (int i = rowIndex + 1; i < row.size(); i++) {
 				row.get(i).gridPosition.row++;
 			}
 		}
 	}
-	
+
 	public void addRowBelow(int rowIndex) {
-		for(List<Cell<T>> row : columns)
-		{
-			row.add(rowIndex+1, new Cell<T>(rowIndex+1, row.get(0).gridPosition.column));
-			
-			for(int i = rowIndex+2; i < row.size(); i++)
-			{
+		for (List<Cell<T>> row : columns) {
+			row.add(rowIndex + 1, new Cell<T>(rowIndex + 1, row.get(0).gridPosition.column));
+
+			for (int i = rowIndex + 2; i < row.size(); i++) {
 				row.get(i).gridPosition.row++;
 			}
 		}
@@ -197,11 +185,10 @@ public class Grid<T> {
 	}
 
 	public int getColumnOf(Cell<T> cell) {
-		for(List<Cell<T>> column : columns)
-		{
-			if(column.contains(cell))
+		for (List<Cell<T>> column : columns) {
+			if (column.contains(cell))
 				return columns.indexOf(column);
-		}	
+		}
 		return -1;
 	}
 
@@ -222,7 +209,7 @@ public class Grid<T> {
 	public Cell<T> getCell(GridPosition position) {
 		try {
 			return columns.get(position.column).get(position.row);
-		}catch(IndexOutOfBoundsException e) {
+		} catch (IndexOutOfBoundsException e) {
 			return null;
 		}
 	}
@@ -235,12 +222,11 @@ public class Grid<T> {
 		addRowBelow(columns.get(0).size() - 1);
 	}
 
-	public void setCellsize(int cellHeight, int cellWidth)
-	{
+	public void setCellsize(int cellHeight, int cellWidth) {
 		this.cellHeight = cellHeight;
 		this.cellWidth = cellWidth;
 	}
-	
+
 	public GridPosition getGridPosition() {
 		return gridPosition;
 	}
@@ -256,7 +242,7 @@ public class Grid<T> {
 	}
 
 	public Dimension getAbsoluteSize() {
-		absoluteSize.setSize(columns.size() * cellWidth, columns.get(0).size() *  cellHeight);
+		absoluteSize.setSize(columns.size() * cellWidth, columns.get(0).size() * cellHeight);
 		return absoluteSize;
 	}
 
@@ -278,4 +264,3 @@ public class Grid<T> {
 		return getCell(new GridPosition(row, column));
 	}
 }
- 

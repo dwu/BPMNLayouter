@@ -27,7 +27,6 @@ import de.uni_hannover.se.BPMNLayouter2.model.bpmn.BPMNUtils;
 import de.uni_hannover.se.BPMNLayouter2.model.grid.Cell;
 import de.uni_hannover.se.BPMNLayouter2.model.grid.Grid;
 import de.uni_hannover.se.BPMNLayouter2.model.grid.GridPosition;
-import de.uni_hannover.se.BPMNLayouter2.model.grid.GridSize;
 import de.uni_hannover.se.BPMNLayouter2.util.Util;
 
 public class SimpleGridLayouter extends Layouter {
@@ -45,13 +44,12 @@ public class SimpleGridLayouter extends Layouter {
 	private HashMap<FlowNode, List<Cell<FlowNode>>> markedCellsMap = new HashMap<>();
 
 	int cellWidth = 150;
-	int cellHeight = (int) ((double)cellWidth * 0.8);
+	int cellHeight = (int) ((double) cellWidth * 0.8);
 
 	int nodeWidth = (int) (cellWidth * 2 / 3); // 150 * 0.66 = 100
 	int nodeHeight = (int) (nodeWidth * 0.8);
-	
-	int eventsize = (int) (cellWidth * 0.24);
 
+	int eventsize = (int) (cellWidth * 0.24);
 
 	public SimpleGridLayouter(BpmnModel model) {
 		super(model);
@@ -67,7 +65,7 @@ public class SimpleGridLayouter extends Layouter {
 	}
 
 	public Grid<FlowNode> layoutModelToGrid(boolean moveNodes) throws Exception {
-		
+
 		containerSpanningFlows = BPMNUtils.findAndTemporarilyRemoveFlowsBetweenPartitions(model.getProcesses(), model);
 		temporarySequenceFlows = BPMNUtils.replaceAssociationsWithSequenceFlows(model);
 
@@ -82,8 +80,7 @@ public class SimpleGridLayouter extends Layouter {
 
 		recoverEdgesBetweenPartitions(model.getProcesses());
 
-		if(moveNodes)
-		{
+		if (moveNodes) {
 			moveNodesWithInterleavingEdges();
 		}
 
@@ -98,9 +95,11 @@ public class SimpleGridLayouter extends Layouter {
 			for (Cell<FlowNode> cell : col) {
 				cell.absolutePosition = new Point(absolutePosition);
 				if (cell.getValue() != null) {
-					if (cell.getValue() instanceof SubProcess && BPMNUtils.activityIsExpanded(cell.getValue().getId(), model))
+					if (cell.getValue() instanceof SubProcess
+							&& BPMNUtils.activityIsExpanded(cell.getValue().getId(), model))
 						updateSubprocessGraphicInfo(cell.getValue().getId(), absolutePosition);
-					else if (cell.getValue() instanceof CallActivity && BPMNUtils.activityIsExpanded(cell.getValue().getId(), model))
+					else if (cell.getValue() instanceof CallActivity
+							&& BPMNUtils.activityIsExpanded(cell.getValue().getId(), model))
 						updateCallActivityGraphicInfo(cell.getValue().getId(), absolutePosition);
 					else
 						updateElementGraphicInfo(cell.getValue().getId(), absolutePosition);
@@ -123,7 +122,7 @@ public class SimpleGridLayouter extends Layouter {
 				if (BPMNUtils.laneIsNotWithinPool(lane, model))
 					updateLaneGraphicInfo(lane);
 			}
-		} 
+		}
 	}
 
 	private void addAllExpandedCallActivityProcessesToProcessGridMap(List<Process> processes, FlowElement flowElement) {
@@ -148,17 +147,16 @@ public class SimpleGridLayouter extends Layouter {
 	}
 
 	private void addGridToMainGrid(Grid<FlowNode> processGrid) {
-		
-		if(!mainGrid.isEmpty())
-		{
+
+		if (!mainGrid.isEmpty()) {
 			mainGrid.addLastRow();
 		}
-		
+
 		processGrid.getGridPosition().row = mainGrid.getGridSize().rows();
 		mainGrid.appendGrid(processGrid);
-		
-		//if(processGrid.getGridPosition().row == 0)
-			//mainGrid.addLastRow();
+
+		// if(processGrid.getGridPosition().row == 0)
+		// mainGrid.addLastRow();
 	}
 
 	private void addLanesToGridMap(List<Lane> lanes) {
@@ -183,8 +181,6 @@ public class SimpleGridLayouter extends Layouter {
 		return flowNodes;
 	}
 
-	
-
 	private void addProcessToGridMap(Process process) {
 		List<FlowNode> flowNodes = BPMNUtils.getFlowNodesFromFlowElementsList(process.getFlowElements());
 		Grid<FlowNode> processGrid = layoutFlowNodesToGrid(flowNodes);
@@ -193,18 +189,17 @@ public class SimpleGridLayouter extends Layouter {
 
 	private void createAndReserveCellsForSubprocess(SubProcess sp, GridPosition position, Grid<FlowNode> grid) {
 		Grid<FlowNode> spGrid = grids.get(sp.getId());
-		if(spGrid == null) {
+		if (spGrid == null) {
 			addSubprocessGridMap(sp);
 			spGrid = grids.get(sp.getId());
 		}
 		int spRows = grids.get(sp.getId()).getGridSize().rows();
-		
-		if(sp.getBoundaryEvents().size() > 0)
-		{
+
+		if (sp.getBoundaryEvents().size() > 0) {
 			spRows--;
 			spRows--;
 		}
-		
+
 		grid.addRowsBelowAndAbovePosition(position, spRows);
 		grid.createAndReserveCells(position, spGrid);
 	}
@@ -217,12 +212,11 @@ public class SimpleGridLayouter extends Layouter {
 	}
 
 	private void appendLanesToMainGrid(Process process) {
-		
-		if(!mainGrid.isEmpty())
-		{
+
+		if (!mainGrid.isEmpty()) {
 			mainGrid.addLastRow();
 		}
-		
+
 		for (Lane lane : process.getLanes()) {
 			Grid<FlowNode> laneGrid = grids.get(lane.getId());
 			laneGrid.getGridPosition().row = mainGrid.getGridSize().rows();
@@ -239,44 +233,42 @@ public class SimpleGridLayouter extends Layouter {
 		int outgoingFlowCount = node.getOutgoingFlows().size();
 		int boundaryEventCount = BPMNUtils.getBoundaryEventCount(node);
 		boolean positionSetByMarker = false;
-		
+
 		if (incomingFlowCount == 0) {
 			if (outgoingFlowCount > 1) {
 				prepareGridForSplit(node, grid, position, outgoingFlowCount);
 			}
-			if(boundaryEventCount > 0)
-			{
+			if (boundaryEventCount > 0) {
 				prepareGridForBoundaryEvents(node, grid, position, boundaryEventCount, 1);
 			}
 			return position;
 		}
-		
+
 		previousCell = getPreviousCell(node, grid);
 		GridPosition previousPosition = getPositionOfPreviousCell(grid, previousCell);
-		
-		if(previousCell.getValue() instanceof SubProcess) {
+
+		if (previousCell.getValue() instanceof SubProcess) {
 			Grid<FlowNode> subprocessGrid = grids.get(previousCell.getValue().getId());
-			previousPosition.row += Math.floor((double)subprocessGrid.getGridSize().rows()/2.0);
+			previousPosition.row += Math.floor((double) subprocessGrid.getGridSize().rows() / 2.0);
 		}
-		
+
 		position = new GridPosition(previousPosition);
-		
+
 		if (isCellMarkerForPositionSetByPreviousNode(previousCell)) {
 
 			List<Cell<FlowNode>> markedCells = markedCellsMap.get(previousCell.getValue());
-			
-			
+
 			if (isfollowingCellAlreadyInGrid(node, grid)) {
 				calculatePositionOfLoopElement(position, previousCell, markedCells);
 			} else {
 				position = markedCells.get(0).gridPosition;
 				markedCells.remove(markedCells.get(0));
 			}
-			positionSetByMarker  = true;
+			positionSetByMarker = true;
 		}
 
 		if (!positionSetByMarker && BPMNUtils.isElementPartOfSequentialSequence(node, previousCell.getValue())) {
-			
+
 			position.column = previousPosition.column + 1;
 
 			if (elementIsPartOfLoop(node, grid)) {
@@ -285,20 +277,16 @@ public class SimpleGridLayouter extends Layouter {
 		}
 
 		if (outgoingFlowCount > 1) {
-			if(positionSetByMarker)
-			{
+			if (positionSetByMarker) {
 				position.column--;
 				prepareGridForSplit(node, grid, position, outgoingFlowCount);
 				position.column++;
-			}else if(nodeLoopsBack(node, grid)){
-				if(outgoingFlowCount - 1 == 1)
-				{
+			} else if (nodeLoopsBack(node, grid)) {
+				if (outgoingFlowCount - 1 == 1) {
 					position = getPositionOfPreviousCell(grid, previousCell);
 					position.column = previousPosition.column + 1;
 				}
-			}
-			else
-			{
+			} else {
 				prepareGridForSplit(node, grid, position, outgoingFlowCount);
 				previousCell = getPreviousCell(node, grid);
 				position = getPositionOfPreviousCell(grid, previousCell);
@@ -318,66 +306,62 @@ public class SimpleGridLayouter extends Layouter {
 			}
 
 			position.column = previousPosition.column + 1;
-			if(prevCellCount > 0)
+			if (prevCellCount > 0)
 				position.row = rowSum / prevCellCount;
 		}
-		
-		if(boundaryEventCount > 0)
-		{
+
+		if (boundaryEventCount > 0) {
 			position.column = previousPosition.column + 1;
-			
-			while(grid.getCell(position) != null && grid.getCell(position).getValue() != null)
+
+			while (grid.getCell(position) != null && grid.getCell(position).getValue() != null)
 				position.column = position.column + 1;
-			
+
 			prepareGridForBoundaryEvents(node, grid, position, boundaryEventCount, 2);
 		}
 
-
-		
 		return position;
 	}
 
 	private boolean nodeLoopsBack(FlowNode node, Grid<FlowNode> grid) {
-		for(SequenceFlow flow : node.getOutgoingFlows())
-		{
+		for (SequenceFlow flow : node.getOutgoingFlows()) {
 			String targetRef = flow.getTargetRef();
 			FlowNode targetNode = (FlowNode) model.getFlowElement(targetRef);
-			if(grid.getCellByValue(targetNode) != null)
+			if (grid.getCellByValue(targetNode) != null)
 				return true;
 		}
 		return false;
 	}
 
-	private void prepareGridForBoundaryEvents(FlowNode node, Grid<FlowNode> grid, GridPosition position, int boundaryEventCount, int colCount) {
-		for(int colCounter = 0; colCounter < colCount; colCounter++)
-		{
-			if(grid.getColumns().size() < position.column + colCounter + 2)
+	private void prepareGridForBoundaryEvents(FlowNode node, Grid<FlowNode> grid, GridPosition position,
+			int boundaryEventCount, int colCount) {
+		for (int colCounter = 0; colCounter < colCount; colCounter++) {
+			if (grid.getColumns().size() < position.column + colCounter + 2)
 				grid.addColumn();
 		}
 		markCellsForBoundaryEvents(node, position, boundaryEventCount, grid);
 	}
 
-	private void markCellsForBoundaryEvents(FlowNode node, GridPosition position, int boundaryEventCount, Grid<FlowNode> grid) {
+	private void markCellsForBoundaryEvents(FlowNode node, GridPosition position, int boundaryEventCount,
+			Grid<FlowNode> grid) {
 		List<Cell<FlowNode>> markedCells = new ArrayList<Cell<FlowNode>>();
 		markedCellsMap.put(node, markedCells);
 		for (int i = 0; i < boundaryEventCount; i++) {
-			
+
 			GridPosition markedCellPosition = new GridPosition(position.row + i + 1, position.column + 1);
-			
-			if(node instanceof SubProcess && grids.get(node.getId()) != null)
-			{
+
+			if (node instanceof SubProcess && grids.get(node.getId()) != null) {
 				int subprocessRows = grids.get(node.getId()).getGridSize().rows();
 				int subprocessColumns = grids.get(node.getId()).getGridSize().columns();
 				markedCellPosition.row += subprocessRows - 1;
 				markedCellPosition.column += subprocessColumns - 1;
 			}
-			
-			while(grid.getGridSize().rows() < markedCellPosition.row + 1)
+
+			while (grid.getGridSize().rows() < markedCellPosition.row + 1)
 				grid.addRowBelow(position.row + i);
-			
-			while(grid.getGridSize().columns() < markedCellPosition.column + 1)
+
+			while (grid.getGridSize().columns() < markedCellPosition.column + 1)
 				grid.addColumn();
-			
+
 			Cell<FlowNode> markedCell = grid.getCell(markedCellPosition);
 			markedCells.add(0, markedCell);
 		}
@@ -397,22 +381,22 @@ public class SimpleGridLayouter extends Layouter {
 			if (grid.getCellByValue(targetNode) != null)
 				return true;
 		}
-		
+
 		return false;
 	}
 
 	private boolean isCellMarkerForPositionSetByPreviousNode(Cell<FlowNode> previousCell) {
-		return markedCellsMap.get(previousCell.getValue()) != null && !markedCellsMap.get(previousCell.getValue()).isEmpty();
+		return markedCellsMap.get(previousCell.getValue()) != null
+				&& !markedCellsMap.get(previousCell.getValue()).isEmpty();
 	}
 
 	private void prepareGridForSplit(FlowNode node, Grid<FlowNode> grid, GridPosition position, int outgoingFlowSize) {
-		
-		if(grid.getColumns().size() <= position.column+2)
-		{
+
+		if (grid.getColumns().size() <= position.column + 2) {
 			grid.addColumn();
 			grid.addColumn();
 		}
-		
+
 		markCellsForSplit(node, position, outgoingFlowSize, grid);
 	}
 
@@ -465,19 +449,18 @@ public class SimpleGridLayouter extends Layouter {
 		GridPosition position = new GridPosition();
 
 		if (previousCell != null) {
-			if (previousCell.getValue() instanceof SubProcess  || previousCell.getValue() instanceof CallActivity) {
+			if (previousCell.getValue() instanceof SubProcess || previousCell.getValue() instanceof CallActivity) {
 				Activity activity = (Activity) previousCell.getValue();
 				position = previousCell.gridPosition.clone();
 
-				if (BPMNUtils.activityIsExpanded(activity.getId(), model))
-					{
-						if (previousCell.getValue() instanceof CallActivity) {
-							position.column += grids.get(((CallActivity)activity).getCalledElement()).getGridSize().columns() - 1;
-						}
-						else if (previousCell.getValue() instanceof SubProcess) {
-							position.column += grids.get((activity).getId()).getGridSize().columns() - 1;
-						}
+				if (BPMNUtils.activityIsExpanded(activity.getId(), model)) {
+					if (previousCell.getValue() instanceof CallActivity) {
+						position.column += grids.get(((CallActivity) activity).getCalledElement()).getGridSize()
+								.columns() - 1;
+					} else if (previousCell.getValue() instanceof SubProcess) {
+						position.column += grids.get((activity).getId()).getGridSize().columns() - 1;
 					}
+				}
 
 			} else {
 				position = previousCell.gridPosition.clone();
@@ -486,7 +469,6 @@ public class SimpleGridLayouter extends Layouter {
 			position.column = grid.getColumns().size() - 1;
 		return position;
 	}
-
 
 	private FlowNode getRightMostFlowNode(List<SequenceFlow> incomingFlows, Grid<FlowNode> grid) {
 
@@ -510,8 +492,8 @@ public class SimpleGridLayouter extends Layouter {
 			}
 
 			Cell<FlowNode> cell = grid.getCellByValue(node);
-			
-			if(cell == null)
+
+			if (cell == null)
 				continue;
 
 			if (cell.gridPosition.column > rightMostColumn) {
@@ -580,23 +562,20 @@ public class SimpleGridLayouter extends Layouter {
 
 				grid.addValue(node, position);
 				GridPosition actualPosition = grid.getCellByValue(node).gridPosition;
-				
-				if(!actualPosition.equals(position))
-				{
-					if(markedCellsMap.containsKey(node))
-					{
+
+				if (!actualPosition.equals(position)) {
+					if (markedCellsMap.containsKey(node)) {
 						int columnDifference = actualPosition.column - position.column;
-						
+
 						List<Cell<FlowNode>> newMarkedCellList = new ArrayList<>();
-						
-						for(Cell<FlowNode> cell : markedCellsMap.get(node))
-						{
+
+						for (Cell<FlowNode> cell : markedCellsMap.get(node)) {
 							GridPosition cellPosition = cell.gridPosition;
 							cellPosition.column += columnDifference;
-							
+
 							newMarkedCellList.add(grid.getCell(cellPosition));
 						}
-						
+
 						markedCellsMap.put(node, newMarkedCellList);
 					}
 				}
@@ -608,13 +587,11 @@ public class SimpleGridLayouter extends Layouter {
 	private void layoutPools() {
 		for (Pool pool : model.getPools()) {
 			Process process = model.getProcess(pool.getId());
-			
-			if(process == null)
-			{
+
+			if (process == null) {
 				addClosedPoolToGridMap(pool.getId());
 				addGridToMainGrid(grids.get(pool.getId()));
-			}
-			else if (process.getLanes().size() == 0) {
+			} else if (process.getLanes().size() == 0) {
 				addProcessToGridMap(process);
 				addGridToMainGrid(grids.get(process.getId()));
 			} else {
@@ -644,43 +621,40 @@ public class SimpleGridLayouter extends Layouter {
 	private void layoutSubprocesses() {
 		for (Process process : model.getProcesses()) {
 			for (SubProcess subprocess : process.findFlowElementsOfType(SubProcess.class)) {
-				if(BPMNUtils.activityIsExpanded(subprocess.getId(), model))
+				if (BPMNUtils.activityIsExpanded(subprocess.getId(), model))
 					addSubprocessGridMap(subprocess);
 			}
 		}
 	}
 
-
 	private void markCellsForSplit(FlowNode node, GridPosition position, int size, Grid<FlowNode> grid) {
 		List<Cell<FlowNode>> markedCells = new ArrayList<Cell<FlowNode>>();
 		markedCellsMap.put(node, markedCells);
 		for (int i = 0; i < size - 1; i += 2) {
-			
+
 			int currentRow = position.row;
-			
+
 			GridPosition upperCellPosition = new GridPosition(currentRow - (i + 1), position.column + 2);
-			while(grid.getCell(upperCellPosition) == null || grid.getCell(upperCellPosition).getValue() != null)
-			{
+			while (grid.getCell(upperCellPosition) == null || grid.getCell(upperCellPosition).getValue() != null) {
 				grid.addRowAbove(currentRow);
 				currentRow++;
 				upperCellPosition = new GridPosition(currentRow - (i + 1), position.column + 2);
 			}
 			Cell<FlowNode> upperCell = grid.getCell(upperCellPosition);
-			assert(upperCell != null);
+			assert (upperCell != null);
 			markedCells.add(upperCell);
 
 			GridPosition lowerCellPosition = new GridPosition(currentRow + (i + 1), position.column + 2);
-			
-			while(grid.getCell(lowerCellPosition) == null || grid.getCell(lowerCellPosition).getValue() != null)
+
+			while (grid.getCell(lowerCellPosition) == null || grid.getCell(lowerCellPosition).getValue() != null)
 				grid.addRowBelow(currentRow);
 
-			Cell<FlowNode> lowerCell = grid.getCell(lowerCellPosition);			
-			assert(lowerCell != null);
+			Cell<FlowNode> lowerCell = grid.getCell(lowerCellPosition);
+			assert (lowerCell != null);
 			markedCells.add(lowerCell);
 		}
 
-		if (size % 2 != 0)
-		{
+		if (size % 2 != 0) {
 			GridPosition middelCellPosition = new GridPosition(position.row + 1, position.column + 2);
 			Cell<FlowNode> middleCell = grid.getCell(middelCellPosition);
 			markedCells.add(middleCell);
@@ -700,7 +674,7 @@ public class SimpleGridLayouter extends Layouter {
 			for (FlowNode node : nodesPreparedForMove) {
 				try {
 					mainGrid.shiftFlowNode(node, distance);
-				}catch(ArrayIndexOutOfBoundsException E) {
+				} catch (ArrayIndexOutOfBoundsException E) {
 					System.out.println("Node can't be moved");
 					System.out.println("Name:\t\t" + node.getName());
 					System.out.println("Dist:\t\t" + distance);
@@ -730,7 +704,7 @@ public class SimpleGridLayouter extends Layouter {
 			}
 			try {
 				moveNodes(target, distance, Direction.RIGHT);
-			}catch(Exception e) {
+			} catch (Exception e) {
 				throw new Exception();
 			}
 		}
@@ -744,13 +718,14 @@ public class SimpleGridLayouter extends Layouter {
 
 			int distance = mainGrid.getColumnOf(srcCell) - mainGrid.getColumnOf(trgCell);
 
-			if (distance <= 0 || model.getPool(flow.getSourceRef()) != null || model.getPool(flow.getTargetRef()) != null) {
+			if (distance <= 0 || model.getPool(flow.getSourceRef()) != null
+					|| model.getPool(flow.getTargetRef()) != null) {
 				continue;
 			}
 
 			try {
 				moveNodes(target, distance, Direction.RIGHT);
-			}catch(Exception e) {
+			} catch (Exception e) {
 				e.printStackTrace();
 				throw new Exception();
 			}
@@ -769,9 +744,9 @@ public class SimpleGridLayouter extends Layouter {
 	}
 
 	private void shrinkMarkedRows(FlowNode node) {
-		
+
 		List<Cell<FlowNode>> markedRows = markedCellsMap.get(node);
-		
+
 		if (markedRows.size() == 2) {
 			markedRows.clear();
 		}
@@ -783,13 +758,12 @@ public class SimpleGridLayouter extends Layouter {
 		int spGridModifierX = 0;
 		int spGridModifierY = 0;
 
-		if(cell.getValue() instanceof SubProcess && BPMNUtils.activityIsExpanded(cell.getValue().getId(), model))
-		{
+		if (cell.getValue() instanceof SubProcess && BPMNUtils.activityIsExpanded(cell.getValue().getId(), model)) {
 			Grid<FlowNode> subprocessGrid = grids.get(cell.getValue().getId());
 			spGridModifierX = subprocessGrid.getAbsoluteSize().width - cellWidth;
-			spGridModifierY = subprocessGrid.getAbsoluteSize().height - cellHeight + (int)(eventsize * 0.5);
+			spGridModifierY = subprocessGrid.getAbsoluteSize().height - cellHeight + (int) (eventsize * 0.5);
 		}
-		
+
 		for (int i = 0; i < cell.getDocks().size(); i++) {
 			FlowNode dock = cell.getDocks().get(i);
 			dock.setName("");
@@ -868,7 +842,7 @@ public class SimpleGridLayouter extends Layouter {
 			elementGraphicInfo.setWidth(nodeWidth);
 			elementGraphicInfo.setHeight(nodeWidth * 0.8);
 		}
-		
+
 		if (model.getFlowElement(key) instanceof Event) {
 			elementGraphicInfo.setWidth(eventsize);
 			elementGraphicInfo.setHeight(eventsize);
@@ -910,8 +884,8 @@ public class SimpleGridLayouter extends Layouter {
 	private void updatePoolGraphicInfo(Pool pool) {
 		String processRef = pool.getProcessRef();
 		Grid<FlowNode> poolGrid = grids.get(processRef);
-		
-		if(poolGrid == null)
+
+		if (poolGrid == null)
 			poolGrid = grids.get(pool.getId());
 
 		if (poolGrid == null) {
@@ -956,7 +930,7 @@ public class SimpleGridLayouter extends Layouter {
 
 		Grid<FlowNode> spGrid = grids.get(subprocessId);
 		spGrid.setCellsize(cellHeight, cellWidth);
-		
+
 		if (!subprocessIsEmpty(subprocessId)) {
 			flowNodeGraphicInfo.setX(absolutePosition.x);
 			flowNodeGraphicInfo.setY(absolutePosition.y + spGrid.getAbsoluteSize().getHeight() * 0.05);
@@ -985,9 +959,9 @@ public class SimpleGridLayouter extends Layouter {
 	}
 
 	private boolean subprocessIsEmpty(String subprocessId) {
-		if(grids.get(subprocessId).getColumns().size() > 1)
+		if (grids.get(subprocessId).getColumns().size() > 1)
 			return false;
-		if(grids.get(subprocessId).getCell(new GridPosition(0,0)).getValue() != null)
+		if (grids.get(subprocessId).getCell(new GridPosition(0, 0)).getValue() != null)
 			return false;
 		return true;
 	}

@@ -2,7 +2,6 @@ package de.uni_hannover.se.BPMNLayouter2.layouter;
 
 import java.awt.Point;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 
 import org.activiti.bpmn.model.Artifact;
@@ -154,13 +153,13 @@ public class SimpleOrthogonalFlowRouter {
 				int offset = 0;
 				int direction = 1;
 
-				while (horizontalLineIsOverlapping(poolMiddleCoordinate, sourceNodeCenter.x, targetNodeCenter.x, offset)) {
-					
-					if(direction == 1)
-					{
+				while (horizontalLineIsOverlapping(poolMiddleCoordinate, sourceNodeCenter.x, targetNodeCenter.x,
+						offset)) {
+
+					if (direction == 1) {
 						offset = (Math.abs(offset) + 5);
 						direction *= -1;
-					}else {
+					} else {
 						offset = direction * offset;
 						direction *= -1;
 					}
@@ -201,11 +200,12 @@ public class SimpleOrthogonalFlowRouter {
 				int yOffset = 0;
 				int yOffsetDirection = 1;
 
-				while (horizontalLineIsOverlapping(poolMiddleCoordinate, sourceNodeCenter.x, targetNodeCenter.x, yOffset)) {
+				while (horizontalLineIsOverlapping(poolMiddleCoordinate, sourceNodeCenter.x, targetNodeCenter.x,
+						yOffset)) {
 					yOffsetDirection *= -1;
 					yOffset = yOffsetDirection * (Math.abs(yOffset) + 5);
 				}
-				
+
 				GraphicInfo bend1 = new GraphicInfo();
 				bend1.setX(sourceNodeCenter.x);
 				bend1.setY(poolMiddleCoordinate + yOffset);
@@ -254,12 +254,13 @@ public class SimpleOrthogonalFlowRouter {
 		for (MessageFlow messageFlow : model.getMessageFlows().values()) {
 
 			List<GraphicInfo> graphicInfoList = model.getFlowLocationGraphicInfo(messageFlow.getId());
-			
+
 			int currentYCoordinate = y + yOffset;
 
 			for (int i = 0; i < graphicInfoList.size() - 1; i++) {
-				
-				if (graphicInfoList.get(i).getY() == graphicInfoList.get(i + 1).getY() && currentYCoordinate == graphicInfoList.get(i).getY()) {
+
+				if (graphicInfoList.get(i).getY() == graphicInfoList.get(i + 1).getY()
+						&& currentYCoordinate == graphicInfoList.get(i).getY()) {
 					if (graphicInfoList.get(i).getX() < graphicInfoList.get(i + 1).getX()) {
 						if (x1 > graphicInfoList.get(i).getX() && x1 < graphicInfoList.get(i + 1).getX())
 							return true;
@@ -280,18 +281,19 @@ public class SimpleOrthogonalFlowRouter {
 
 		return false;
 	}
-	
+
 	private static boolean verticalLineIsOverlapping(int x, int y1, int y2, int xOffset) {
 
 		for (MessageFlow messageFlow : model.getMessageFlows().values()) {
 
 			List<GraphicInfo> graphicInfoList = model.getFlowLocationGraphicInfo(messageFlow.getId());
-			
+
 			int currentXCoordinate = x + xOffset;
 
 			for (int i = 0; i < graphicInfoList.size() - 1; i++) {
-				
-				if (graphicInfoList.get(i).getX() == graphicInfoList.get(i + 1).getX() && currentXCoordinate == graphicInfoList.get(i).getX()) {
+
+				if (graphicInfoList.get(i).getX() == graphicInfoList.get(i + 1).getX()
+						&& currentXCoordinate == graphicInfoList.get(i).getX()) {
 					if (graphicInfoList.get(i).getY() < graphicInfoList.get(i + 1).getY()) {
 						if (x > graphicInfoList.get(i).getY() && x < graphicInfoList.get(i + 1).getY())
 							return true;
